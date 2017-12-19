@@ -47,6 +47,7 @@ public abstract class SetTest {
                 while ((word = str.readLine()) != null) {
                     words.add(word);
                 }
+                System.out.println("dict size:" + words.size());
                 test("Values specified as nondelimited strings are interpreted according "
                         + "their length. For a string 8 or 14 characters long, the year is assumed" + " to be given by the first 4 characters. Otherwise, the "
                         + "year is assumed to be given by the first 2 characters. " + "The string is interpreted from left to right to find year,"
@@ -116,8 +117,8 @@ public abstract class SetTest {
     @Test
     public void testShortestMatch() {
         final String[] keywords = Generator.randomNumbers(1000);
-        test(Generator.combinedStrings(keywords, 50), keywords);
         test("abcyyyy", "abcd", "bcxxxx", "cyyyy");
+        test(Generator.combinedStrings(keywords, 50), keywords);
     }
 
     @Test
@@ -142,10 +143,12 @@ public abstract class SetTest {
         return Arrays.asList(keywords);
     }
 
-    private void test(final String haystack, final String... needles) {
+    protected boolean isCaseSensitive = true;
+
+    public void test(final String haystack, final String... needles) {
         final List<String> keywords = prepareKeywords(needles);
         long constructionStart = System.nanoTime();
-        final StringSet set = instantiateSet(keywords, true);
+        final StringSet set = instantiateSet(keywords, isCaseSensitive);
         System.out.println("Cons: " + (System.nanoTime() - constructionStart));
         System.gc();
         try {

@@ -55,6 +55,10 @@ public class WholeWordLongestMatchSet implements StringSet {
     }
 
     public void match(final String haystack, final SetMatchListener listener) {
+        match(haystack, 0, haystack.length(), listener);
+    }
+
+    public void match(final String haystack, final int offset, final int length, final SetMatchListener listener) {
         // Nodes contain fail matches, which is the last normal match up the tree before the current node
         // match.
 
@@ -62,11 +66,10 @@ public class WholeWordLongestMatchSet implements StringSet {
         TrieNode currentNode = root;
         boolean skipWhitespace = whitespaceReader.enabled();
 
-
-        int idx = 0;
+        int idx = offset;
         int skipped = 0;
         // For each character.
-        final int len = haystack.length();
+        final int len = length;
         // Putting this if into the loop worsens the performance so we'll sadly
         // have to deal with duplicated code.
         if (caseSensitive) {

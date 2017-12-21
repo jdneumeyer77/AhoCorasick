@@ -12,7 +12,7 @@ public class WholeWordLongestMatchTest extends SetTest {
     boolean normalizeWhitespace = false;
 
     public static void main(final String[] args) throws IOException {
-//        System.in.read();
+        System.in.read();
         System.out.println("without normalization whitespace!");
         new WholeWordLongestMatchTest(false, false, 1000000).testLiteral();
         new WholeWordLongestMatchTest(false, false, 1000000).testOverlap();

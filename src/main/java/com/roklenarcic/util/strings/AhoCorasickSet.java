@@ -1,6 +1,7 @@
 package com.roklenarcic.util.strings;
 
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 import com.roklenarcic.util.strings.threshold.RangeNodeThreshold;
 import com.roklenarcic.util.strings.threshold.Thresholder;
@@ -10,31 +11,56 @@ import com.roklenarcic.util.strings.threshold.Thresholder;
 // It is highly optimized for this particular use.
 public class AhoCorasickSet implements StringSet {
 
+    private static Pattern whitespaceNormalizer = Pattern.compile("\\s+");
+
     private boolean caseSensitive = true;
+    private boolean collapseWhitespace = false;
+
+    static WhitespaceReader NoOpWhiteSpaceReaderInstance = new NoOpWhitespaceReader();
+    static WhitespaceReader SkipWhiteSpaceReaderInstance = new SkipWhitespaceReader();
+    private WhitespaceReader whitespaceReader;
+
     private TrieNode root;
 
-    public AhoCorasickSet(final Iterable<String> keywords, boolean caseSensitive) {
-        this(keywords, caseSensitive, new RangeNodeThreshold());
+    public AhoCorasickSet(final Iterable<String> keywords, boolean caseSensitive, boolean collapseWhitespace) {
+        this(keywords, caseSensitive, collapseWhitespace, new RangeNodeThreshold());
     }
 
-    public AhoCorasickSet(final Iterable<String> keywords, boolean caseSensitive, final Thresholder thresholdStrategy) {
+    public AhoCorasickSet(final Iterable<String> keywords, boolean caseSensitive, boolean collapseWhitespace, final Thresholder thresholdStrategy) {
         // Create the root node
         root = new HashmapNode(true);
         this.caseSensitive = caseSensitive;
+        this.collapseWhitespace = collapseWhitespace;
+        if(this.collapseWhitespace) {
+            whitespaceReader = SkipWhiteSpaceReaderInstance;
+        } else {
+            whitespaceReader = NoOpWhiteSpaceReaderInstance;
+        }
+
         // Add all keywords
         for (String keyword : keywords) {
             // Skip any empty keywords
-            if (keyword != null && keyword.length() > 0) {
-                // Start with the current node and traverse the tree
-                // character by character. Add nodes as needed to
-                // fill out the tree.
-                HashmapNode currentNode = (HashmapNode) root;
-                for (int idx = 0; idx < keyword.length(); idx++) {
-                    currentNode = currentNode.getOrAddChild(caseSensitive ? keyword.charAt(idx) : Character.toLowerCase(keyword.charAt(idx)));
+            if (keyword != null) {
+
+                final String normalizedKeyword;
+                if(collapseWhitespace) {
+                    normalizedKeyword = trimSpaces(whitespaceNormalizer.matcher(keyword).replaceAll(" "));
+                } else {
+                    normalizedKeyword = keyword;
                 }
-                // Last node will contains the keyword as a match.
-                // Suffix matches will be added later.
-                currentNode.matchLength = keyword.length();
+
+                if(normalizedKeyword.length() > 0) {
+                    // Start with the current node and traverse the tree
+                    // character by character. Add nodes as needed to
+                    // fill out the tree.
+                    HashmapNode currentNode = (HashmapNode) root;
+                    for (int idx = 0; idx < normalizedKeyword.length(); idx++) {
+                        currentNode = currentNode.getOrAddChild(caseSensitive ? normalizedKeyword.charAt(idx) : Character.toLowerCase(normalizedKeyword.charAt(idx)));
+                    }
+                    // Last node will contains the keyword as a match.
+                    // Suffix matches will be added later.
+                    currentNode.matchLength = normalizedKeyword.length();
+                }
             }
         }
         // Go through nodes breadth first, swap any hashmap nodes,
@@ -191,18 +217,31 @@ public class AhoCorasickSet implements StringSet {
     }
 
     public void match(final String haystack, final SetMatchListener listener) {
+        match(haystack, 0, haystack.length(), listener);
+    }
+
+    public void match(final String haystack, final int offset, final int len, final SetMatchListener listener) {
 
         // Start with the root node.
         TrieNode currentNode = root;
 
-        int idx = 0;
-        // For each character.
-        final int len = haystack.length();
+        boolean skipWhitespace = whitespaceReader.enabled();
+
+        int skipped = 0;
+        int idx = offset;
         // Putting this if into the loop worsens the performance so we'll sadly
         // have to deal with duplicated code.
         if (caseSensitive) {
             while (idx < len) {
-                final char c = haystack.charAt(idx);
+                char c = haystack.charAt(idx);
+                boolean skippedWhitespace = skipWhitespace && currentNode != root && whitespaceReader.isWhitespace(c);
+                if(skippedWhitespace) {
+                    while (++idx < len && whitespaceReader.isWhitespace(haystack.charAt(idx))) {
+                        ++skipped;
+                    }
+                    --idx;
+                    c = ' ';
+                }
                 // Try to transition from the current node using the character
                 TrieNode nextNode = currentNode.getTransition(c);
 
@@ -210,6 +249,7 @@ public class AhoCorasickSet implements StringSet {
                 // node X where you can transition to another node Y using this
                 // character. Take the transition.
                 while (nextNode == null) {
+//                    skipped = 0;
                     // Transition follow one fail transition
                     currentNode = currentNode.getFailTransition();
                     // See if you can transition to another node with this
@@ -217,16 +257,27 @@ public class AhoCorasickSet implements StringSet {
                     // missing transition.
                     nextNode = currentNode.getTransition(c);
                 }
+
+                if(nextNode == root) skipped = 0;
+
                 // Take the transition.
                 currentNode = nextNode;
                 // Output any matches on the current node and increase the index
-                if (!currentNode.output(haystack, listener, ++idx)) {
-                    break;
+                if (!currentNode.output(haystack, listener, ++idx, skipped)) {
+                    return;
                 }
             }
         } else {
             while (idx < len) {
-                final char c = Character.toLowerCase(haystack.charAt(idx));
+                char c = Character.toLowerCase(haystack.charAt(idx));
+                boolean skippedWhitespace = skipWhitespace && currentNode != root && whitespaceReader.isWhitespace(c);
+                if(skippedWhitespace) {
+                    while (++idx < len && whitespaceReader.isWhitespace(haystack.charAt(idx))) {
+                        ++skipped;
+                    }
+                    --idx;
+                    c = ' ';
+                }
                 // Try to transition from the current node using the character
                 TrieNode nextNode = currentNode.getTransition(c);
 
@@ -241,11 +292,14 @@ public class AhoCorasickSet implements StringSet {
                     // missing transition.
                     nextNode = currentNode.getTransition(c);
                 }
+
+                if(nextNode == root) skipped = 0; // restart matching from root.
+
                 // Take the transition.
                 currentNode = nextNode;
                 // Output any matches on the current node and increase the index
-                if (!currentNode.output(haystack, listener, ++idx)) {
-                    break;
+                if (!currentNode.output(haystack, listener, ++idx, skipped)) {
+                    return;
                 }
             }
         }
@@ -519,15 +573,15 @@ public class AhoCorasickSet implements StringSet {
         public abstract void mapEntries(final EntryVisitor visitor);
 
         // Report matches at this node. Use at matching.
-        public final boolean output(String haystack, SetMatchListener listener, int idx) {
+        public final boolean output(String haystack, SetMatchListener listener, int idx, int skipped) {
             // since idx is the last character in the match
             // position it past the match (to be consistent with conventions)
             boolean ret = true;
             if (matchLength > 0) {
-                ret = listener.match(haystack, idx - matchLength, idx);
+                ret = listener.match(haystack, idx - skipped - matchLength, idx);
                 TrieNode suffixMatch = this.suffixMatch;
                 while (suffixMatch != null && ret) {
-                    ret = listener.match(haystack, idx - suffixMatch.matchLength, idx);
+                    ret = listener.match(haystack, idx - skipped - suffixMatch.matchLength, idx);
                     suffixMatch = suffixMatch.suffixMatch;
                 }
             }
@@ -540,6 +594,45 @@ public class AhoCorasickSet implements StringSet {
             return this;
         }
 
+    }
+
+    public static String trimSpaces(String value) {
+        int len = value.length();
+        int st = 0;
+        char[] val = value.toCharArray();
+
+        while ((st < len) && (val[st] == ' ' || val[st] == '\t' || val[st] == '\n' || val[st] == '\f' || val[st] == '\r' || val[st] == 11)) {
+            st++;
+        }
+        while ((st < len) && (val[len - 1] == ' ' || val[len - 1] == '\t' || val[len - 1] == '\n' || val[len - 1] == '\f' || val[len - 1] == '\r' || val[len - 1] == 11)) {
+            len--;
+        }
+        return ((st > 0) || (len < value.length())) ? value.substring(st, len) : value;
+    }
+
+    protected interface WhitespaceReader {
+        boolean isWhitespace(char c);
+        boolean enabled();
+    }
+
+    protected final static class NoOpWhitespaceReader implements WhitespaceReader {
+        public boolean enabled() {
+            return false;
+        }
+
+        public boolean isWhitespace(char c) {
+            return false;
+        }
+    }
+
+    protected final static class SkipWhitespaceReader implements WhitespaceReader {
+        public boolean enabled() {
+            return true;
+        }
+
+        public boolean isWhitespace(char c) {
+            return c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == 11; // equivalent to regex '\s'
+        }
     }
 
 }

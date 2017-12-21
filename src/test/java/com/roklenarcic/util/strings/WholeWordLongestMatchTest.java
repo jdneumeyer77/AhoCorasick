@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Test;
 
 public class WholeWordLongestMatchTest extends SetTest {
 
@@ -14,31 +15,31 @@ public class WholeWordLongestMatchTest extends SetTest {
     public static void main(final String[] args) throws IOException {
         System.in.read();
         System.out.println("without normalization whitespace!");
-        new WholeWordLongestMatchTest(false, false, 1000000).testLiteral();
-        new WholeWordLongestMatchTest(false, false, 1000000).testOverlap();
-        new WholeWordLongestMatchTest(false, false, 1000000).testLongKeywords();
-        new WholeWordLongestMatchTest(false, false, 1000000).testFullRandom();
-        new WholeWordLongestMatchTest(false, false, 1000000).testFailureTransitions();
-        new WholeWordLongestMatchTest(false, false, 1000000).testDictionary();
-        new WholeWordLongestMatchTest(false, false, 1000000).testShortestMatch();
+        new WholeWordLongestMatchTest(false, true, 1000000).testLiteral();
+        new WholeWordLongestMatchTest(false, true, 1000000).testOverlap();
+        new WholeWordLongestMatchTest(false, true, 1000000).testLongKeywords();
+        new WholeWordLongestMatchTest(false, true, 1000000).testFullRandom();
+        new WholeWordLongestMatchTest(false, true, 1000000).testFailureTransitions();
+        new WholeWordLongestMatchTest(false, true, 1000000).testDictionary();
+        new WholeWordLongestMatchTest(false, true, 1000000).testShortestMatch();
 
         System.out.println("normalized whitespace!");
-        new WholeWordLongestMatchTest(true, false, 1000000).testLiteral();
-        new WholeWordLongestMatchTest(true, false, 1000000).testOverlap();
-        new WholeWordLongestMatchTest(true, false, 1000000).testLongKeywords();
-        new WholeWordLongestMatchTest(true, false, 1000000).testFullRandom();
-        new WholeWordLongestMatchTest(true, false, 1000000).testFailureTransitions();
-        new WholeWordLongestMatchTest(true, false, 1000000).testDictionary();
-        new WholeWordLongestMatchTest(true, false, 1000000).testShortestMatch();
+        new WholeWordLongestMatchTest(true, true, 1000000).testLiteral();
+        new WholeWordLongestMatchTest(true, true, 1000000).testOverlap();
+        new WholeWordLongestMatchTest(true, true, 1000000).testLongKeywords();
+        new WholeWordLongestMatchTest(true, true, 1000000).testFullRandom();
+        new WholeWordLongestMatchTest(true, true, 1000000).testFailureTransitions();
+        new WholeWordLongestMatchTest(true, true, 1000000).testDictionary();
+        new WholeWordLongestMatchTest(true, true, 1000000).testShortestMatch();
 
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bobswims", "a bob");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bob swims", "a bob");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("   a\t     bob    swims   ", "a bob");
-        new WholeWordLongestMatchTest(true, false, 1000000).test(".a     bob swims", "a bob");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bob! swims", "a bob");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a bob      swims", "bob swims");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a BoB      swims.", "bob swims");
-        new WholeWordLongestMatchTest(true, false, 1000000).test("a BoB swims.", "bob swims");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a     bobswims", "a bob");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a     bob swims", "a bob");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("   a\t     bob    swims   ", "a bob");
+        new WholeWordLongestMatchTest(true, true, 1000000).test(".a     bob swims", "a bob");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a     bob! swims", "a bob");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a bob      swims", "bob swims");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a BoB      swims.", "bob swims");
+        new WholeWordLongestMatchTest(true, true, 1000000).test("a BoB swims.", "bob swims");
     }
 
     public WholeWordLongestMatchTest() {
@@ -85,7 +86,6 @@ public class WholeWordLongestMatchTest extends SetTest {
             haystack = haystack.toLowerCase();
         }
 
-        System.out.println(haystack);
         int normalCount = 0;
         for (int i = 0; i < haystack.length(); i++) {
             for (final String needle : keywords) {
@@ -132,6 +132,27 @@ public class WholeWordLongestMatchTest extends SetTest {
             }
         });
         return super.prepareKeywords(keywords);
+    }
+
+
+    @Test
+    public void testNormalizedWhitespace() throws Exception {
+        new WholeWordLongestMatchTest(true, false, 1000000).testLiteral();
+        new WholeWordLongestMatchTest(true, false, 1000000).testOverlap();
+        new WholeWordLongestMatchTest(true, false, 1000000).testLongKeywords();
+        new WholeWordLongestMatchTest(true, false, 1000000).testFullRandom();
+        new WholeWordLongestMatchTest(true, false, 1000000).testFailureTransitions();
+        new WholeWordLongestMatchTest(true, false, 1000000).testDictionary();
+        new WholeWordLongestMatchTest(true, false, 1000000).testShortestMatch();
+
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bobswims", "a bob");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bob swims", "a bob");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("   a\t     bob    swims   ", "a bob");
+        new WholeWordLongestMatchTest(true, false, 1000000).test(".a     bob swims", "a bob");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a     bob! swims", "a bob");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a bob      swims", "bob swims");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a BoB      swims.", "bob swims");
+        new WholeWordLongestMatchTest(true, false, 1000000).test("a BoB swims.", "bob swims");
     }
 
 }

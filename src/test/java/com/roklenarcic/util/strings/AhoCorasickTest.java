@@ -5,36 +5,36 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Consumer;
 
 import static com.roklenarcic.util.strings.AhoCorasickSet.trimSpaces;
 
 public class AhoCorasickTest extends SetTest {
 
-    private static boolean normalizeWhitespace = true;
+    private static boolean normalizeWhitespace = false;
 
     public static void main(final String[] args) throws IOException {
         System.in.read();
-        new AhoCorasickTest(false, 1000000).testFullNode();
-        new AhoCorasickTest(false, 1000000).testLiteral();
-        new AhoCorasickTest(false, 1000000).testOverlap();
-        new AhoCorasickTest(false, 1000000).testLongKeywords();
+        new AhoCorasickTest(true, 1000000).testFullNode();
+        new AhoCorasickTest(true, 1000000).testLiteral();
+        new AhoCorasickTest(true, 1000000).testOverlap();
+        new AhoCorasickTest(true, 1000000).testLongKeywords();
         if(!normalizeWhitespace) new AhoCorasickTest(false, 1000000).testFullRandom();
         new AhoCorasickTest(false, 1000000).testFailureTransitions();
         new AhoCorasickTest(false, 1000000).testDictionary();
         new AhoCorasickTest(false, 1000000).testShortestMatch();
 
 
-
-        new AhoCorasickTest(false, 1000000).test("a bobswims", "a bob");
-        new AhoCorasickTest(false, 1000000).test("a     bobswims", "a bob");
-        new AhoCorasickTest(false, 1000000).test("a     bob swims", "a bob");
-        new AhoCorasickTest(false, 1000000).test("   a\t     bob    swims   ", "a bob");
-        new AhoCorasickTest(false, 1000000).test(".a     bob swims", "a bob");
-        new AhoCorasickTest(false, 1000000).test("a     bob! swims", "a bob");
-        new AhoCorasickTest(false, 1000000).test("a bob      swims", "bob swims");
-        new AhoCorasickTest(false, 1000000).test("a BoB      swims.", "bob swims");
-        new AhoCorasickTest(false, 1000000).test("a BoB swims.", "bob swims");
+        normalizeWhitespace = true;
+        new AhoCorasickTest(true, 1000000).test("a bobswims", "a bob");
+        new AhoCorasickTest(true, 1000000).test("a     bobswims", "a bob");
+        new AhoCorasickTest(true, 1000000).test("a     bob swims", "a bob");
+        new AhoCorasickTest(true, 1000000).test("   a\t     bob    swims   ", "a bob");
+        new AhoCorasickTest(true, 1000000).test(".a     bob swims", "a bob");
+        new AhoCorasickTest(true, 1000000).test("a     bob! swims", "a bob");
+        new AhoCorasickTest(true, 1000000).test("a bob      swims", "bob swims");
+        new AhoCorasickTest(true, 1000000).test("a BoB      swims.", "bob swims");
+        new AhoCorasickTest(true, 1000000).test("a BoB swims.", "bob swims");
+        normalizeWhitespace = false;
     }
 
     public AhoCorasickTest() {
@@ -43,7 +43,6 @@ public class AhoCorasickTest extends SetTest {
 
     private AhoCorasickTest(boolean printTimesOnly, int testLoopSize) {
         super(printTimesOnly, testLoopSize);
-
         isCaseSensitive = true;
     }
 
@@ -51,7 +50,6 @@ public class AhoCorasickTest extends SetTest {
 
     protected void assertCorrectMatch(final int startPosition, final int endPosition, List<String> keywords, String haystack, StringSet set) {
 
-       // System.out.println("start/end: " + startPosition + '/' + endPosition);
         String matched;
         if(normalizeWhitespace)
             matched = trimSpaces(haystack.substring(startPosition, endPosition).replaceAll("\\s+", " "));
@@ -100,14 +98,6 @@ public class AhoCorasickTest extends SetTest {
             }
         }
 
-        results.removeAll(collector);
-
-        results.forEach(new Consumer<String>() {
-            public void accept(String s) {
-                System.out.println(s);
-            }
-        });
-
         if(!isCaseSensitive) return collector.size();
         else return normalCount;
     }
@@ -126,6 +116,7 @@ public class AhoCorasickTest extends SetTest {
     }
 
     @Test
+    @Override
     public void testFullNode() {
 
             final String[] keywords = new String[65536];
@@ -137,6 +128,32 @@ public class AhoCorasickTest extends SetTest {
             } else {
                 test("\u0000\uffff\ufffe", keywords);
             }
+    }
+
+    // not ideal, but it'll work to test these variations.
+    @Test
+    public void testNormalizedWhitespace() throws Exception {
+        normalizeWhitespace = true;
+        new AhoCorasickTest(false, 1000000).testFullNode();
+        new AhoCorasickTest(false, 1000000).testLiteral();
+        new AhoCorasickTest(false, 1000000).testOverlap();
+        new AhoCorasickTest(false, 1000000).testLongKeywords();
+        new AhoCorasickTest(false, 1000000).testFailureTransitions();
+        new AhoCorasickTest(false, 1000000).testDictionary();
+        new AhoCorasickTest(false, 1000000).testShortestMatch();
+
+
+        new AhoCorasickTest(false, 1000000).test("a bobswims", "a bob");
+        new AhoCorasickTest(false, 1000000).test("a     bobswims", "a bob");
+        new AhoCorasickTest(false, 1000000).test("a     bob swims", "a bob");
+        new AhoCorasickTest(false, 1000000).test("   a\t     bob    swims   ", "a bob");
+        new AhoCorasickTest(false, 1000000).test(".a     bob swims", "a bob");
+        new AhoCorasickTest(false, 1000000).test("a     bob! swims", "a bob");
+        new AhoCorasickTest(false, 1000000).test("a bob      swims", "bob swims");
+        new AhoCorasickTest(false, 1000000).test("a BoB      swims.", "bob swims");
+        new AhoCorasickTest(false, 1000000).test("a BoB swims.", "bob swims");
+
+        normalizeWhitespace = false;
     }
 
     @Override

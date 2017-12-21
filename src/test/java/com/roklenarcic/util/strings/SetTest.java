@@ -47,7 +47,6 @@ public abstract class SetTest {
                 while ((word = str.readLine()) != null) {
                     words.add(word);
                 }
-                System.out.println("dict size:" + words.size());
                 test("Values specified as nondelimited strings are interpreted according "
                         + "their length. For a string 8 or 14 characters long, the year is assumed" + " to be given by the first 4 characters. Otherwise, the "
                         + "year is assumed to be given by the first 2 characters. " + "The string is interpreted from left to right to find year,"

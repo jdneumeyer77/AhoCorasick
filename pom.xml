@@ -2,14 +2,14 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.roklenarcic</groupId>
+  <groupId>com.github.jdneumeyer77</groupId>
   <artifactId>aho-corasick</artifactId>
-  <version>1.1</version>
+  <version>1.2</version>
   <packaging>jar</packaging>
   <name>Aho-Corasick and related multi-string searches</name>
   <description>Java library for matching against large dictionaries of strings</description>
   <inceptionYear>2015</inceptionYear> 
-  <url>https://github.com/RokLenarcic/AhoCorasick</url>
+  <url>https://github.com/jdneumeyer77/AhoCorasick</url>
 
   <parent>
     <groupId>org.sonatype.oss</groupId>
@@ -25,14 +25,59 @@
   </licenses>
 
   <scm>
-      <url>scm:git://github.com/RokLenarcic/AhoCorasick</url>
+      <url>scm:git://github.com/jdneumeyer77/AhoCorasick</url>
   </scm>
   
   <issueManagement>
     <system>GitHub Issue Management</system>
-    <url>https://github.com/RokLenarcic/AhoCorasick/issues</url>
+    <url>https://github.com/jdneumeyer77/AhoCorasick/issues</url>
   </issueManagement>
-  
+
+  <repositories>
+
+    <repository>
+      <id>aws-release</id>
+      <name>AWS Release Repository</name>
+      <url>s3://bounce-maven/release</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
+      <id>aws-snapshot</id>
+      <name>AWS Snapshot Repository</name>
+      <url>s3://bounce-maven/snapshot</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
+      <id>mashape-releases</id>
+      <url>http://maven.mashape.com/releases</url>
+    </repository>
+
+    <repository>
+      <id>repository.springsource.milestone</id>
+      <name>SpringSource Milestone Repository</name>
+      <url>http://repo.spring.io/milestone/</url>
+    </repository>
+
+    <repository>
+      <id>jlangdetect-googlecode</id>
+      <name>JLangDetect Maven repository</name>
+      <url>https://jlangdetect.googlecode.com/svn/repo</url>
+    </repository>
+  </repositories>
+
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -49,48 +94,37 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>2.4</version>
+        <version>3.0.2</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>sign-artifacts</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>sign</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.5.1</version>
-        <executions>
-          <execution>
-            <id>default-deploy</id>
-            <phase>deploy</phase>
-            <goals>
-              <goal>deploy</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <serverId>nexus</serverId>
-          <nexusUrl>https://oss.sonatype.org/service/local/staging/deploy/maven2/</nexusUrl>
-          <skipStaging>true</skipStaging>
-        </configuration>
-      </plugin>
+
     </plugins>
-  </build>  
+    <extensions>
+      <extension>
+        <groupId>org.springframework.build</groupId>
+        <artifactId>aws-maven</artifactId>
+        <version>5.0.0.RELEASE</version>
+      </extension>
+    </extensions>
+  </build>
+  <distributionManagement>
+    <repository>
+      <id>aws-release</id>
+      <name>AWS Release Repository</name>
+      <url>s3://bounce-maven/release</url>
+    </repository>
+    <snapshotRepository>
+      <id>aws-snapshot</id>
+      <name>AWS Snapshot Repostory</name>
+      <url>s3://bounce-maven/snapshot</url>
+    </snapshotRepository>
+  </distributionManagement>
+
 </project>

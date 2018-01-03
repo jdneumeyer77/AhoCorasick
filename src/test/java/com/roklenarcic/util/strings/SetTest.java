@@ -116,8 +116,8 @@ public abstract class SetTest {
     @Test
     public void testShortestMatch() {
         final String[] keywords = Generator.randomNumbers(1000);
-        test(Generator.combinedStrings(keywords, 50), keywords);
         test("abcyyyy", "abcd", "bcxxxx", "cyyyy");
+        test(Generator.combinedStrings(keywords, 50), keywords);
     }
 
     @Test
@@ -142,10 +142,12 @@ public abstract class SetTest {
         return Arrays.asList(keywords);
     }
 
-    private void test(final String haystack, final String... needles) {
+    protected boolean isCaseSensitive = true;
+
+    public void test(final String haystack, final String... needles) {
         final List<String> keywords = prepareKeywords(needles);
         long constructionStart = System.nanoTime();
-        final StringSet set = instantiateSet(keywords, true);
+        final StringSet set = instantiateSet(keywords, isCaseSensitive);
         System.out.println("Cons: " + (System.nanoTime() - constructionStart));
         System.gc();
         try {

@@ -3,62 +3,83 @@ package com.roklenarcic.util.strings;
 import com.roklenarcic.util.strings.threshold.RangeNodeThreshold;
 import com.roklenarcic.util.strings.threshold.Thresholder;
 
+import java.util.regex.Pattern;
+
 // A set that matches only whole word matches. Non-word characters are user defined (with a default).
 // Any non-word characters around input strings get trimmed. Non-word characters are allowed in the keywords.
 public class WholeWordLongestMatchSet implements StringSet {
 
     private boolean caseSensitive = true;
+    private boolean normalizeWhitespace = false;
     private TrieNode root;
     private boolean[] wordChars;
 
+
+    static WhitespaceReader NoOpWhiteSpaceReaderInstance = new NoOpWhitespaceReader();
+    static WhitespaceReader SkipWhiteSpaceReaderInstance = new SkipWhitespaceReader();
+    private WhitespaceReader whitespaceReader;
+
+    public static Pattern keywordWhitespaceNormalizer = Pattern.compile("\\s+");
+
     // Set where digits and letters, '-' and '_' are considered word characters.
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive) {
-        this(keywords, caseSensitive, new RangeNodeThreshold());
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace) {
+        this(keywords, caseSensitive, normalizeWhitespace, new RangeNodeThreshold());
     }
 
     // Set where the characters in the given array are considered word characters
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, char[] wordCharacters) {
-        this(keywords, caseSensitive, wordCharacters, new RangeNodeThreshold());
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, char[] wordCharacters) {
+        this(keywords, caseSensitive, normalizeWhitespace, wordCharacters, new RangeNodeThreshold());
     }
 
     // Set where digits and letters and '-' and '_' are considered word characters but modified by the two
     // given arrays
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, char[] wordCharacters, boolean[] toggleFlags) {
-        this(keywords, caseSensitive, wordCharacters, toggleFlags, new RangeNodeThreshold());
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, char[] wordCharacters, boolean[] toggleFlags) {
+        this(keywords, caseSensitive, normalizeWhitespace, wordCharacters, toggleFlags, new RangeNodeThreshold());
     }
 
     // Set where digits and letters and '-' and '_' are considered word characters but modified by the two
     // given arrays
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, char[] wordCharacters, boolean[] toggleFlags,
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, char[] wordCharacters, boolean[] toggleFlags,
             Thresholder thresholdStrategy) {
-        init(keywords, caseSensitive, WordCharacters.generateWordCharsFlags(wordCharacters, toggleFlags), thresholdStrategy);
+        init(keywords, caseSensitive, normalizeWhitespace, WordCharacters.generateWordCharsFlags(wordCharacters, toggleFlags), thresholdStrategy);
     }
 
     // Set where the characters in the given array are considered word characters
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, char[] wordCharacters, Thresholder thresholdStrategy) {
-        init(keywords, caseSensitive, WordCharacters.generateWordCharsFlags(wordCharacters), thresholdStrategy);
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, char[] wordCharacters, Thresholder thresholdStrategy) {
+        init(keywords, caseSensitive, normalizeWhitespace, WordCharacters.generateWordCharsFlags(wordCharacters), thresholdStrategy);
     }
 
     // Set where digits and letters, '-' and '_' are considered word characters.
-    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, Thresholder thresholdStrategy) {
-        init(keywords, caseSensitive, WordCharacters.generateWordCharsFlags(), thresholdStrategy);
+    public WholeWordLongestMatchSet(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, Thresholder thresholdStrategy) {
+        init(keywords, caseSensitive, normalizeWhitespace, WordCharacters.generateWordCharsFlags(), thresholdStrategy);
     }
 
     public void match(final String haystack, final SetMatchListener listener) {
+        match(haystack, 0, haystack.length(), listener);
+    }
+
+    public void match(final String haystack, final int offset, final int length, final SetMatchListener listener) {
         // Nodes contain fail matches, which is the last normal match up the tree before the current node
         // match.
 
         // Start with the root node.
         TrieNode currentNode = root;
+        boolean skipWhitespace = whitespaceReader.enabled();
 
-        int idx = 0;
+        int idx = offset;
+        int skipped = 0;
         // For each character.
-        final int len = haystack.length();
+        final int len = length;
         // Putting this if into the loop worsens the performance so we'll sadly
         // have to deal with duplicated code.
         if (caseSensitive) {
             while (idx < len) {
                 char c = haystack.charAt(idx);
+                boolean skippedWhitespace = skipWhitespace && whitespaceReader.isWhitespace(c);
+                if(skippedWhitespace) {
+                    c = ' ';
+                }
+
                 TrieNode nextNode = currentNode.getTransition(c);
                 // Regardless of the type of the character, we keep moving till we run into
                 // a situation where there's no transition available.
@@ -70,7 +91,7 @@ public class WholeWordLongestMatchSet implements StringSet {
                         // a fail match if there is one.
                         // Later we will run through non-word characters to the start of the next word.
                         if (currentNode.matchLength != 0) {
-                            if (!listener.match(haystack, idx - currentNode.matchLength, idx)) {
+                            if (!listener.match(haystack, idx - skipped - currentNode.matchLength, idx)) {
                                 return;
                             }
                         } else if (currentNode.failMatchLength != 0) {
@@ -93,12 +114,22 @@ public class WholeWordLongestMatchSet implements StringSet {
                             ;
                         }
                     }
+
                     // Scroll to the first word character
                     while (++idx < len && !wordChars[haystack.charAt(idx)]) {
                         ;
                     }
+
+                    skipped = 0;
+
                     currentNode = root;
                 } else {
+                    if(skippedWhitespace) {
+                        while (++idx < len && whitespaceReader.isWhitespace(haystack.charAt(idx)))  {
+                            ++skipped;
+                        }
+                        --idx;
+                    }
                     // If we have transition just take it.
                     ++idx;
                     currentNode = nextNode;
@@ -106,7 +137,7 @@ public class WholeWordLongestMatchSet implements StringSet {
             }
             // Output any matches on the last node, either a normal match or fail match.
             if (currentNode.matchLength != 0) {
-                if (!listener.match(haystack, idx - currentNode.matchLength, idx)) {
+                if (!listener.match(haystack, idx - skipped - currentNode.matchLength, idx)) {
                     return;
                 }
             } else if (currentNode.failMatchLength != 0) {
@@ -118,6 +149,10 @@ public class WholeWordLongestMatchSet implements StringSet {
         } else {
             while (idx < len) {
                 char c = Character.toLowerCase(haystack.charAt(idx));
+                boolean skippedWhitespace = skipWhitespace && whitespaceReader.isWhitespace(c);
+                if(skippedWhitespace) {
+                    c = ' ';
+                }
                 TrieNode nextNode = currentNode.getTransition(c);
                 // Regardless of the type of the character, we keep moving till we run into
                 // a situation where there's no transition available.
@@ -129,12 +164,12 @@ public class WholeWordLongestMatchSet implements StringSet {
                         // a fail match if there is one.
                         // Later we will run through non-word characters to the start of the next word.
                         if (currentNode.matchLength != 0) {
-                            if (!listener.match(haystack, idx - currentNode.matchLength, idx)) {
+                            if (!listener.match(haystack, idx - skipped - currentNode.matchLength, idx)) {
                                 return;
                             }
                         } else if (currentNode.failMatchLength != 0) {
                             int failMatchEnd = idx - currentNode.failMatchOffset;
-                            if (!listener.match(haystack, failMatchEnd - currentNode.failMatchLength, failMatchEnd)) {
+                            if (!listener.match(haystack, failMatchEnd - skipped - currentNode.failMatchLength, failMatchEnd)) {
                                 return;
                             }
                         }
@@ -143,7 +178,7 @@ public class WholeWordLongestMatchSet implements StringSet {
                         // fail match on the node and scroll through word characters to a non-word character.
                         if (currentNode.failMatchLength != 0) {
                             int failMatchEnd = idx - currentNode.failMatchOffset;
-                            if (!listener.match(haystack, failMatchEnd - currentNode.failMatchLength, failMatchEnd)) {
+                            if (!listener.match(haystack, failMatchEnd - skipped - currentNode.failMatchLength, failMatchEnd)) {
                                 return;
                             }
                         }
@@ -152,12 +187,20 @@ public class WholeWordLongestMatchSet implements StringSet {
                             ;
                         }
                     }
+
                     // Scroll to the first word character
                     while (++idx < len && !wordChars[haystack.charAt(idx)]) {
                         ;
                     }
+                    skipped = 0;
                     currentNode = root;
                 } else {
+                    if(skippedWhitespace) { // in the middle of a transition/partial match. If it was a whitespace skip it until we encounter non-whitespace.
+                        while (++idx < len && whitespaceReader.isWhitespace(haystack.charAt(idx))) {
+                            ++skipped;
+                        }
+                        --idx;
+                    }
                     // If we have transition just take it.
                     ++idx;
                     currentNode = nextNode;
@@ -165,12 +208,12 @@ public class WholeWordLongestMatchSet implements StringSet {
             }
             // Output any matches on the last node, either a normal match or fail match.
             if (currentNode.matchLength != 0) {
-                if (!listener.match(haystack, idx - currentNode.matchLength, idx)) {
+                if (!listener.match(haystack, idx - skipped - currentNode.matchLength, idx)) {
                     return;
                 }
             } else if (currentNode.failMatchLength != 0) {
                 int failMatchEnd = idx - currentNode.failMatchOffset;
-                if (!listener.match(haystack, failMatchEnd - currentNode.failMatchLength, failMatchEnd)) {
+                if (!listener.match(haystack, failMatchEnd - skipped - currentNode.failMatchLength, failMatchEnd)) {
                     return;
                 }
             }
@@ -181,9 +224,17 @@ public class WholeWordLongestMatchSet implements StringSet {
         return wordChars;
     }
 
-    private void init(final Iterable<String> keywords, boolean caseSensitive, final boolean[] wordChars, final Thresholder thresholdStrategy) {
+    private void init(final Iterable<String> keywords, boolean caseSensitive, boolean normalizeWhitespace, final boolean[] wordChars, final Thresholder thresholdStrategy) {
         this.caseSensitive = caseSensitive;
+        this.normalizeWhitespace = normalizeWhitespace;
         this.wordChars = wordChars;
+
+        if(normalizeWhitespace) {
+            whitespaceReader = SkipWhiteSpaceReaderInstance;
+        } else {
+            whitespaceReader = NoOpWhiteSpaceReaderInstance;
+        }
+
         // Create the root node
         root = new HashmapNode();
         // Add all keywords
@@ -191,6 +242,10 @@ public class WholeWordLongestMatchSet implements StringSet {
             // Skip any empty keywords
             if (keyword != null) {
                 keyword = WordCharacters.trim(keyword, wordChars);
+                if(normalizeWhitespace) {
+                    keyword = keywordWhitespaceNormalizer.matcher(keyword).replaceAll(" ");
+                }
+
                 if (keyword.length() > 0) {
                     // Start with the current node and traverse the tree
                     // character by character. Add nodes as needed to
@@ -527,6 +582,31 @@ public class WholeWordLongestMatchSet implements StringSet {
             return this;
         }
 
+    }
+
+    protected interface WhitespaceReader {
+        boolean isWhitespace(char c);
+        boolean enabled();
+    }
+
+    protected final static class NoOpWhitespaceReader implements WhitespaceReader {
+        public boolean enabled() {
+            return false;
+        }
+
+        public boolean isWhitespace(char c) {
+            return false;
+        }
+    }
+
+    protected final static class SkipWhitespaceReader implements WhitespaceReader {
+        public boolean enabled() {
+            return true;
+        }
+
+        public boolean isWhitespace(char c) {
+            return c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == 11; // equivalent to regex '\s'
+        }
     }
 
 }
